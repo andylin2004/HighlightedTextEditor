@@ -2,7 +2,7 @@
 
 A simple, powerful SwiftUI text editor for iOS and macOS with live syntax highlighting.
 
-Highlight what's important as your users type. 
+Highlight what's important as your users type.
 
 ![HighlightedTextEditor demo](https://raw.githubusercontent.com/kyle-n/kyle-n.github.io/master/static/img/hte-demo.gif)
 
@@ -16,11 +16,11 @@ File -> Swift Packages -> Add Package Dependency and use the URL `https://github
 
 ### CocoaPods
 
-Add `pod 'HighlightedTextEditor'` to your `Podfile` and run `pod install`. 
+Add `pod 'HighlightedTextEditor'` to your `Podfile` and run `pod install`.
 
 ## Usage
 
-HighlightedTextEditor applies styles to text matching regex patterns you provide. You can apply multiple styles to each regex pattern, as shown in the example below. 
+HighlightedTextEditor applies styles to text matching regex patterns you provide. You can apply multiple styles to each regex pattern, as shown in the example below.
 
 ```swift
 import HighlightedTextEditor
@@ -29,9 +29,9 @@ import HighlightedTextEditor
 let betweenUnderscores = try! NSRegularExpression(pattern: "_[^_]+_", options: [])
 
 struct ContentView: View {
-    
+
     @State private var text: String = ""
-    
+
     private let rules: [HighlightRule] = [
         HighlightRule(pattern: betweenUnderscores, formattingRules: [
             TextFormattingRule(fontTraits: [.traitItalic, .traitBold]),
@@ -42,7 +42,7 @@ struct ContentView: View {
             }
         ])
     ]
-    
+
     var body: some View {
         VStack {
             HighlightedTextEditor(text: $text, highlightRules: rules)
@@ -62,7 +62,7 @@ struct ContentView: View {
 }
 ```
 
-Notice the NSRegularExpression is instantiated **once**. It should not be recreated every time the view is redrawn. This [helps performance](https://stackoverflow.com/questions/41705728/optimize-nsregularexpression-performance). 
+Notice the NSRegularExpression is instantiated **once**. It should not be recreated every time the view is redrawn. This [helps performance](https://stackoverflow.com/questions/41705728/optimize-nsregularexpression-performance).
 
 ## Presets
 
@@ -71,7 +71,7 @@ I've included a few useful presets for syntax highlighting as static vars on `[H
 Current presets include:
 
 - `markdown`
-- `url` 
+- `url`
 
 Example of using a preset:
 
@@ -152,7 +152,7 @@ TextFormattingRule offers three different initializers that each set one style. 
 
 [4]: https://developer.apple.com/documentation/appkit/nsfontdescriptor/symbolictraits
 
-If you are targeting iOS 14 / macOS 11, you can use a convenience initializer taking advantage of new SwiftUI APIs for converting Colors to UIColors or NSColors. 
+If you are targeting iOS 14 / macOS 11, you can use a convenience initializer taking advantage of new SwiftUI APIs for converting Colors to UIColors or NSColors.
 
 | Parameter | Type | Description |
 | --- | --- | --- |

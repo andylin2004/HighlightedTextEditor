@@ -18,6 +18,10 @@ public let package = Package(
         .target(
             name: "HighlightedTextEditor",
             dependencies: []
+        ),
+        .testTarget(
+            name: "HighlightedTextEditorTests",
+            dependencies: ["HighlightedTextEditor"]
         )
     ]
 )

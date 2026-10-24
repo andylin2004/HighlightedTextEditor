@@ -51,24 +51,35 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
     }
 
     public func updateUIView(_ uiView: UITextView, context: Context) {
+        context.coordinator.parent = self
+        // The input method owns marked text and its selection until commit.
+        // Replacing it with the whole highlighted document duplicates content
+        // and invalidates TextKit positions used by the keyboard.
+        guard uiView.markedTextRange == nil else { return }
+
+        let wasScrollEnabled = uiView.isScrollEnabled
+        let selection = context.coordinator.selectedRange ?? uiView.selectedRange
         uiView.isScrollEnabled = false
         context.coordinator.updatingUIView = true
+        defer {
+            uiView.isScrollEnabled = wasScrollEnabled
+            context.coordinator.updatingUIView = false
+        }
 
         let highlightedText = HighlightedTextEditor.getHighlightedText(
             text: text,
             highlightRules: highlightRules
         )
 
-        if let range = uiView.markedTextNSRange {
-            uiView.setAttributedMarkedText(highlightedText, selectedRange: range)
-        } else {
-            uiView.attributedText = highlightedText
-        }
+        uiView.attributedText = highlightedText
         updateTextViewModifiers(uiView)
         runIntrospect(uiView)
-        uiView.isScrollEnabled = true
-        uiView.selectedTextRange = context.coordinator.selectedTextRange
-        context.coordinator.updatingUIView = false
+        // Save offsets, not UITextRange objects tied to the previous document.
+        // External replacements can shorten the text while a selection exists.
+        let start = min(max(selection.location, 0), highlightedText.length)
+        let restored = NSRange(location: start, length: min(max(selection.length, 0), highlightedText.length - start))
+        if uiView.selectedRange != restored { uiView.selectedRange = restored }
+        context.coordinator.selectedRange = restored
     }
 
     private func runIntrospect(_ textView: UITextView) {
@@ -85,7 +96,7 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
 
     public final class Coordinator: NSObject, UITextViewDelegate {
         var parent: HighlightedTextEditor
-        var selectedTextRange: UITextRange?
+        var selectedRange: NSRange?
         var updatingUIView = false
 
         init(_ markdownEditorView: HighlightedTextEditor) {
@@ -94,18 +105,16 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
 
         public func textViewDidChange(_ textView: UITextView) {
             // For Multistage Text Input
-            guard textView.markedTextRange == nil else { return }
+            guard !updatingUIView, textView.markedTextRange == nil else { return }
 
+            selectedRange = textView.selectedRange
             parent.text = textView.text
-            selectedTextRange = textView.selectedTextRange
         }
 
         public func textViewDidChangeSelection(_ textView: UITextView) {
-            guard let onSelectionChange = parent.onSelectionChange,
-                  !updatingUIView
-            else { return }
-            selectedTextRange = textView.selectedTextRange
-            onSelectionChange([textView.selectedRange])
+            guard !updatingUIView, textView.markedTextRange == nil else { return }
+            selectedRange = textView.selectedRange
+            parent.onSelectionChange?([textView.selectedRange])
         }
 
         public func textViewDidBeginEditing(_ textView: UITextView) {
