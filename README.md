@@ -172,3 +172,18 @@ Are you using HighlightedTextEditor in your app? I would love to feature you her
 AppKit text editor code based on [MacEditorTextView](https://gist.github.com/unnamedd/6e8c3fbc806b8deb60fa65d6b9affab0) by [Thiago Holanda](https://twitter.com/tholanda).
 
 Created by [Kyle Nazario](https://twitter.com/kbn_au).
+
+
+## Additional APIs in this fork
+
+Alongside the existing regex initializers, `HighlightRule(ranges:formattingRules:)`
+accepts a closure that returns UTF-16 ranges for the current source. This allows
+an external parser to supply recognized ranges directly. Invalid ranges are
+ignored before formatting.
+
+`TextFormattingRule(fontTransform:)` receives each existing font run separately,
+so a caller can change its weight or size without replacing the font across a
+whole match. The existing font-trait and attribute APIs remain available.
+
+See [FORK.md](FORK.md) for the rendering and input-composition fixes retained by
+this fork.

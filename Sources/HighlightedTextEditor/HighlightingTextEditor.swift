@@ -39,6 +39,7 @@ public struct TextFormattingRule {
     let key: NSAttributedString.Key?
     let calculateValue: AttributedKeyCallback?
     let fontTraits: SymbolicTraits
+    let transformFont: ((SystemFontAlias) -> SystemFontAlias)?
 
     // ------------------- convenience ------------------------
 
@@ -54,16 +55,23 @@ public struct TextFormattingRule {
         self.init(key: nil, fontTraits: fontTraits)
     }
 
+    /// Transform each existing font run without flattening its size or traits.
+    public init(fontTransform: @escaping (SystemFontAlias) -> SystemFontAlias) {
+        self.init(key: nil, transformFont: fontTransform)
+    }
+
     // ------------------ most powerful initializer ------------------
 
     init(
         key: NSAttributedString.Key? = nil,
         calculateValue: AttributedKeyCallback? = nil,
-        fontTraits: SymbolicTraits = []
+        fontTraits: SymbolicTraits = [],
+        transformFont: ((SystemFontAlias) -> SystemFontAlias)? = nil
     ) {
         self.key = key
         self.calculateValue = calculateValue
         self.fontTraits = fontTraits
+        self.transformFont = transformFont
     }
 }
 
@@ -138,11 +146,12 @@ extension HighlightingTextEditor {
 
                     // Preserve font boundaries within a match. Attribute-only
                     // rules must not replace fonts elsewhere in that range.
-                    if !formattingRule.fontTraits.isEmpty {
+                    if !formattingRule.fontTraits.isEmpty || formattingRule.transformFont != nil {
                         var fonts: [(NSRange, SystemFontAlias)] = []
                         highlightedString.enumerateAttribute(.font, in: range, options: []) { value, range, _ in
                             let previousFont = value as? SystemFontAlias ?? editorFont
-                            fonts.append((range, previousFont.with(formattingRule.fontTraits)))
+                            let font = formattingRule.transformFont?(previousFont) ?? previousFont.with(formattingRule.fontTraits)
+                            fonts.append((range, font))
                         }
                         for (range, font) in fonts {
                             highlightedString.addAttribute(.font, value: font, range: range)

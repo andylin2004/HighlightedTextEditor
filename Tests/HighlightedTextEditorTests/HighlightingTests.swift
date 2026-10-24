@@ -106,6 +106,64 @@ final class HighlightingTests: XCTestCase {
         XCTAssertEqual(result.attribute(.underlineStyle, at: (text as NSString).range(of: "valid").location, effectiveRange: nil) as? Int, 1)
     }
 
+    func testParserRangesPreserveTraitsAndUseCurrentSource() throws {
+        var inputs: [String] = []
+        let parsed = HighlightRule(ranges: { text in
+            inputs.append(text)
+            return [(text as NSString).range(of: "café")]
+        }, formattingRules: [TextFormattingRule(fontTraits: italic)])
+        for text in ["😀 café", "new café text"] {
+            let result = Renderer.getHighlightedText(text: text, highlightRules: [
+                parsed,
+                try rule(".*", TextFormattingRule(fontTraits: bold))
+            ])
+            let location = (text as NSString).range(of: "café").location
+            XCTAssertTrue(try traits(result, at: location).contains(bold.union(italic)))
+            XCTAssertFalse(try traits(result, at: 0).contains(italic))
+            XCTAssertEqual(result.string, text)
+        }
+        XCTAssertEqual(inputs, ["😀 café", "new café text"])
+    }
+
+    func testInvalidParserRangesAreIgnored() {
+        let text = "😀 café"
+        let parsed = HighlightRule(ranges: { _ in [
+            NSRange(location: NSNotFound, length: 1),
+            NSRange(location: -1, length: 2),
+            NSRange(location: 0, length: -1),
+            NSRange(location: 1, length: 1), // Inside an emoji's surrogate pair.
+            NSRange(location: 0, length: Int.max),
+            NSRange(location: 0, length: 0),
+            NSRange(location: 3, length: 4)
+        ] }, formattingRules: [TextFormattingRule(key: .underlineStyle, value: 1)])
+        let result = Renderer.getHighlightedText(text: text, highlightRules: [parsed])
+        XCTAssertNil(result.attribute(.underlineStyle, at: 0, effectiveRange: nil))
+        XCTAssertEqual(result.attribute(.underlineStyle, at: 3, effectiveRange: nil) as? Int, 1)
+        XCTAssertEqual(result.string, text)
+    }
+
+    func testFontTransformReceivesEachExistingRun() throws {
+        let large = SystemFontAlias.systemFont(ofSize: 24)
+        let transformed = TextFormattingRule(fontTransform: { font in
+            #if os(macOS)
+            return NSFont(descriptor: font.fontDescriptor, size: font.pointSize + 1) ?? font
+            #else
+            return UIFont(descriptor: font.fontDescriptor, size: font.pointSize + 1)
+            #endif
+        })
+        let result = Renderer.getHighlightedText(text: "one two", highlightRules: [
+            try rule("one", TextFormattingRule(key: .font, value: large)),
+            try rule("two", TextFormattingRule(fontTraits: italic)),
+            try rule(".*", transformed)
+        ])
+        let one = try XCTUnwrap(result.attribute(.font, at: 0, effectiveRange: nil) as? SystemFontAlias)
+        let two = try XCTUnwrap(result.attribute(.font, at: 4, effectiveRange: nil) as? SystemFontAlias)
+        XCTAssertEqual(one.pointSize, 25)
+        XCTAssertEqual(two.pointSize, defaultEditorFont.pointSize + 1)
+        XCTAssertFalse(one.fontDescriptor.symbolicTraits.contains(italic))
+        XCTAssertTrue(two.fontDescriptor.symbolicTraits.contains(italic))
+    }
+
     func testEmptyTextAndNoRulesRemainSupported() {
         XCTAssertEqual(Renderer.getHighlightedText(text: "", highlightRules: []).string, "")
         XCTAssertEqual(Renderer.getHighlightedText(text: "😀 plain", highlightRules: []).string, "😀 plain")

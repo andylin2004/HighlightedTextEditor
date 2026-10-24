@@ -1,36 +1,43 @@
-# Local HighlightedTextEditor fork
+# HighlightedTextEditor fork
 
 Upstream: https://github.com/kyle-n/HighlightedTextEditor
 Base revision: 759d7b4bd2c10d0bbe93bc62d68572a3702049e3
+Fork: https://github.com/andylin2004/HighlightedTextEditor
+Branch: feat/editor-improvements
 License: MIT (see LICENSE).
 
-Fork: https://github.com/andylin2004/HighlightedTextEditor
-Branch: fix/consumer-editor-fixes
+## Rendering
 
-consumer currently uses a vendored copy through a relative Xcode package reference.
-Existing API calls remain source-compatible. The highlighting engine
-combines font traits for each existing font run instead of copying the final
-run's font over the entire match. Attribute-only rules leave fonts untouched.
-This preserves overlapping bold and italic styles when quote, underline,
-strikethrough, color, or other attribute rules cover a larger range.
+The renderer combines font traits separately for every existing font run.
+Attribute-only rules preserve font boundaries, including different sizes and
+nested bold and italic styling.
 
-The UIKit update path also defers document and selection replacement during
-marked-text composition. Committed selections are stored as UTF-16 ranges and
-clamped before restoration, rather than retaining stale UITextRange objects.
-The coordinator refreshes its parent each update so commits use current bindings
-and callbacks. consumer's integration tests cover real marked text through SwiftUI
-refreshes, composition commit, Unicode input, and shorter external replacements.
+`TextFormattingRule(fontTransform:)` transforms each existing font run. Callers
+can adjust weight while retaining the run's size and other traits. Application
+styling policies remain in the caller.
 
-HighlightRule also accepts an optional matchFilter callback. It receives the full
-document and UTF-16 match range, allowing consumer to share contextual Markdown
-validation between controls and highlighting without putting Discord syntax
-into the package. Existing rules accept every regex match by default.
+## Matching
 
-HighlightRule also accepts parser-provided UTF-16 ranges through its ranges
-initializer, ignoring invalid ranges before applying formatting.
+`HighlightRule` supports an optional `matchFilter` receiving the complete source
+and UTF-16 match range. Existing regex rules accept all matches by default.
 
-Regression tests live in Tests/HighlightedTextEditorTests. consumer's editor tests
-also exercise the actual SwiftUI editor with this package.
+The `ranges` initializer also accepts parser-provided UTF-16 ranges. Providers
+receive the current source on every highlighting pass. Empty, out-of-bounds, and
+invalid Unicode ranges are ignored. Existing regex initializers remain supported.
 
-These changes are published in the fork linked above.
-When updating from upstream, retain the font-run fix and run both test suites.
+## Input composition
+
+The UIKit update path defers document and selection replacement during active
+marked-text composition. Committed selections use UTF-16 offsets and are clamped
+before restoration. The coordinator refreshes its parent on each update so that
+commits use the current bindings and callbacks.
+
+## Verification
+
+Package regressions live in `Tests/HighlightedTextEditorTests`, covering font-run
+composition, transforms, regex callbacks and filters, parser ranges, and invalid
+ranges. Consumer integration suites should additionally exercise actual input
+composition, selection restoration, and binding refreshes in a hosted editor.
+
+When updating from upstream, retain these behaviors and run the package tests
+and the consuming application's integration suite.
