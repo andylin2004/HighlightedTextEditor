@@ -5,7 +5,7 @@ Base revision: 759d7b4bd2c10d0bbe93bc62d68572a3702049e3
 License: MIT (see LICENSE).
 
 Fork: https://github.com/andylin2004/HighlightedTextEditor
-Branch: codex/consumer-editor-fixes
+Branch: fix/consumer-editor-fixes
 
 consumer currently uses a vendored copy through a relative Xcode package reference.
 Existing API calls remain source-compatible. The highlighting engine
