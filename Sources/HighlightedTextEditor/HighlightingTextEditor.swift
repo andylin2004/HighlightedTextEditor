@@ -173,3 +173,32 @@ extension HighlightingTextEditor {
         return highlightedString
     }
 }
+
+/// Callers opt in because highlighting callbacks can depend on external state.
+public extension HighlightedTextEditor {
+    /// Change this revision whenever rule behavior or captured values change.
+    /// Text, text size, and color scheme changes invalidate rendering automatically.
+    /// Without a revision, every update renders as before.
+    func highlightingRevision(_ revision: AnyHashable) -> Self {
+        var editor = self
+        editor.highlightingRevision = revision
+        return editor
+    }
+}
+
+struct HighlightingRenderSnapshot: Equatable {
+    let text: String
+    let revision: AnyHashable?
+    let sizeCategory: ContentSizeCategory
+    let colorScheme: ColorScheme
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        // Canonically equivalent strings can have different UTF-16 marker offsets.
+        lhs.revision == rhs.revision && lhs.sizeCategory == rhs.sizeCategory
+            && lhs.colorScheme == rhs.colorScheme && lhs.text.utf16.elementsEqual(rhs.text.utf16)
+    }
+
+    func canReuse(_ previous: Self?, nativeText: String) -> Bool {
+        revision != nil && previous == self && text.utf16.elementsEqual(nativeText.utf16)
+    }
+}

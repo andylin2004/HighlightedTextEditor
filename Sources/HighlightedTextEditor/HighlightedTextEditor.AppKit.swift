@@ -25,6 +25,9 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
     }
 
     let highlightRules: [HighlightRule]
+    var highlightingRevision: AnyHashable?
+    @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.colorScheme) private var colorScheme
 
     private(set) var onEditingChanged: OnEditingChangedCallback?
     private(set) var onCommit: OnCommitCallback?
@@ -53,7 +56,19 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
     }
 
     public func updateNSView(_ view: ScrollableTextView, context: Context) {
+        context.coordinator.parent = self
+        guard !view.textView.hasMarkedText() else {
+            context.coordinator.renderedSnapshot = nil
+            return
+        }
+        let snapshot = HighlightingRenderSnapshot(text: text, revision: highlightingRevision,
+                                                 sizeCategory: sizeCategory, colorScheme: colorScheme)
+        if snapshot.canReuse(context.coordinator.renderedSnapshot, nativeText: view.textView.string) {
+            runIntrospect(view)
+            return
+        }
         context.coordinator.updatingNSView = true
+        defer { context.coordinator.updatingNSView = false }
         let typingAttributes = view.textView.typingAttributes
 
         let highlightedText = HighlightedTextEditor.getHighlightedText(
@@ -62,10 +77,10 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         )
 
         view.attributedText = highlightedText
+        context.coordinator.renderedSnapshot = snapshot
         runIntrospect(view)
         view.selectedRanges = context.coordinator.selectedRanges
         view.textView.typingAttributes = typingAttributes
-        context.coordinator.updatingNSView = false
     }
 
     private func runIntrospect(_ view: ScrollableTextView) {
@@ -78,6 +93,7 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
 public extension HighlightedTextEditor {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: HighlightedTextEditor
+        var renderedSnapshot: HighlightingRenderSnapshot?
         var selectedRanges: [NSValue] = []
         var updatingNSView = false
 
@@ -103,7 +119,9 @@ public extension HighlightedTextEditor {
         }
 
         public func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
+            guard !updatingNSView, let textView = notification.object as? NSTextView else { return }
+            renderedSnapshot = nil
+            guard !textView.hasMarkedText() else { return }
             let content = String(textView.textStorage?.string ?? "")
 
             parent.text = content

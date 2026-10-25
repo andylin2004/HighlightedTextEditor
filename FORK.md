@@ -16,6 +16,13 @@ nested bold and italic styling.
 can adjust weight while retaining the run's size and other traits. Application
 styling policies remain in the caller.
 
+`highlightingRevision(_:)` opts into reusing the applied rendering on unchanged
+updates. Change the revision whenever highlighting callbacks or captured values
+change behavior. Exact UTF-16 text, text size category, and color scheme changes
+invalidate rendering automatically, as do native edits and input composition.
+Reused updates still refresh introspection and callbacks and preserve the live
+selection. Without a revision, every update renders as before.
+
 ## Matching
 
 `HighlightRule` supports an optional `matchFilter` receiving the complete source

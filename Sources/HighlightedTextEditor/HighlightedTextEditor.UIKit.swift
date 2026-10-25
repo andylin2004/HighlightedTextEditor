@@ -22,6 +22,9 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
     }
 
     let highlightRules: [HighlightRule]
+    var highlightingRevision: AnyHashable?
+    @Environment(\.sizeCategory) private var sizeCategory
+    @Environment(\.colorScheme) private var colorScheme
 
     private(set) var onEditingChanged: OnEditingChangedCallback?
     private(set) var onCommit: OnCommitCallback?
@@ -55,7 +58,17 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
         // The input method owns marked text and its selection until commit.
         // Replacing it with the whole highlighted document duplicates content
         // and invalidates TextKit positions used by the keyboard.
-        guard uiView.markedTextRange == nil else { return }
+        guard uiView.markedTextRange == nil else {
+            context.coordinator.renderedSnapshot = nil
+            return
+        }
+        let snapshot = HighlightingRenderSnapshot(text: text, revision: highlightingRevision,
+                                                 sizeCategory: sizeCategory, colorScheme: colorScheme)
+        if snapshot.canReuse(context.coordinator.renderedSnapshot, nativeText: uiView.text ?? "") {
+            updateTextViewModifiers(uiView)
+            runIntrospect(uiView)
+            return
+        }
 
         let wasScrollEnabled = uiView.isScrollEnabled
         let selection = context.coordinator.selectedRange ?? uiView.selectedRange
@@ -72,6 +85,7 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
         )
 
         uiView.attributedText = highlightedText
+        context.coordinator.renderedSnapshot = snapshot
         updateTextViewModifiers(uiView)
         runIntrospect(uiView)
         // Save offsets, not UITextRange objects tied to the previous document.
@@ -96,6 +110,7 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
 
     public final class Coordinator: NSObject, UITextViewDelegate {
         var parent: HighlightedTextEditor
+        var renderedSnapshot: HighlightingRenderSnapshot?
         var selectedRange: NSRange?
         var updatingUIView = false
 
@@ -105,7 +120,9 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
 
         public func textViewDidChange(_ textView: UITextView) {
             // For Multistage Text Input
-            guard !updatingUIView, textView.markedTextRange == nil else { return }
+            guard !updatingUIView else { return }
+            renderedSnapshot = nil
+            guard textView.markedTextRange == nil else { return }
 
             selectedRange = textView.selectedRange
             parent.text = textView.text

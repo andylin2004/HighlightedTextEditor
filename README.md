@@ -185,5 +185,13 @@ ignored before formatting.
 so a caller can change its weight or size without replacing the font across a
 whole match. The existing font-trait and attribute APIs remain available.
 
+
+`highlightingRevision(_:)` opts into reusing the applied rendering on unchanged
+updates. Change the revision whenever highlighting callbacks or captured values
+change behavior. Exact UTF-16 text, text size category, and color scheme changes
+invalidate rendering automatically, as do native edits and input composition.
+Reused updates still refresh introspection and callbacks and preserve the live
+selection. Without a revision, every update renders as before.
+
 See [FORK.md](FORK.md) for the rendering and input-composition fixes retained by
 this fork.
