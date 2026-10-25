@@ -69,7 +69,6 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         }
         context.coordinator.updatingNSView = true
         defer { context.coordinator.updatingNSView = false }
-        let typingAttributes = view.textView.typingAttributes
 
         let highlightedText = HighlightedTextEditor.getHighlightedText(
             text: text,
@@ -80,7 +79,9 @@ public struct HighlightedTextEditor: NSViewRepresentable, HighlightingTextEditor
         context.coordinator.renderedSnapshot = snapshot
         runIntrospect(view)
         view.selectedRanges = context.coordinator.selectedRanges
-        view.textView.typingAttributes = typingAttributes
+        view.textView.typingAttributes = Self.typingAttributes(
+            in: highlightedText, at: view.textView.selectedRange().location
+        )
     }
 
     private func runIntrospect(_ view: ScrollableTextView) {
@@ -130,13 +131,16 @@ public extension HighlightedTextEditor {
 
         public func textViewDidChangeSelection(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView,
-                  let onSelectionChange = parent.onSelectionChange,
                   !updatingNSView,
                   let ranges = textView.selectedRanges as? [NSRange]
             else { return }
             selectedRanges = textView.selectedRanges
+            guard !textView.hasMarkedText() else { return }
+            textView.typingAttributes = HighlightedTextEditor.typingAttributes(
+                in: textView.attributedString(), at: textView.selectedRange().location
+            )
             DispatchQueue.main.async {
-                onSelectionChange(ranges)
+                self.parent.onSelectionChange?(ranges)
             }
         }
 

@@ -94,6 +94,7 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
         let restored = NSRange(location: start, length: min(max(selection.length, 0), highlightedText.length - start))
         if uiView.selectedRange != restored { uiView.selectedRange = restored }
         context.coordinator.selectedRange = restored
+        uiView.typingAttributes = Self.typingAttributes(in: highlightedText, at: restored.location)
     }
 
     private func runIntrospect(_ textView: UITextView) {
@@ -131,6 +132,9 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
         public func textViewDidChangeSelection(_ textView: UITextView) {
             guard !updatingUIView, textView.markedTextRange == nil else { return }
             selectedRange = textView.selectedRange
+            textView.typingAttributes = HighlightedTextEditor.typingAttributes(
+                in: textView.attributedText, at: textView.selectedRange.location
+            )
             parent.onSelectionChange?([textView.selectedRange])
         }
 

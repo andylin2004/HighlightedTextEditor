@@ -125,6 +125,21 @@ public typealias OnTextChangeCallback = (_ editorContent: String) -> Void
 extension HighlightingTextEditor {
     var placeholderFont: SystemColorAlias { SystemColorAlias() }
 
+    /// Use the rendered character before the caret, including its line break.
+    /// Native editors can otherwise retain a heading font on an empty body line.
+    static func typingAttributes(in text: NSAttributedString, at location: Int) -> [NSAttributedString.Key: Any] {
+        guard text.length > 0 else {
+            return [.font: defaultEditorFont, .foregroundColor: defaultEditorTextColor]
+        }
+        var offset = min(max(location - 1, 0), text.length - 1)
+        // At the start of an existing line, use that line's rendered style.
+        let previous = (text.string as NSString).character(at: offset)
+        if location > 0, location < text.length, previous == 10 || previous == 13 {
+            offset = location
+        }
+        return text.attributes(at: offset, effectiveRange: nil)
+    }
+
     static func getHighlightedText(text: String, highlightRules: [HighlightRule]) -> NSMutableAttributedString {
         let highlightedString = NSMutableAttributedString(string: text)
         let all = NSRange(location: 0, length: text.utf16.count)
