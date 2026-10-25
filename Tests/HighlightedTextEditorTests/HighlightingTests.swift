@@ -7,6 +7,33 @@ import UIKit
 @testable import HighlightedTextEditor
 
 final class HighlightingTests: XCTestCase {
+    @MainActor func testLeadingBarFollowsWrappedTextAndRemovesCleanly() throws {
+        let view = LeadingBarTextView(frame: CGRect(x: 0, y: 0, width: 180, height: 500))
+        let source = "A decorated paragraph with enough words to wrap over several lines. 👩🏽‍💻"
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.firstLineHeadIndent = 12
+        paragraph.headIndent = 12
+        let text = NSAttributedString(string: source, attributes: [
+            .font: SystemFontAlias.systemFont(ofSize: 16),
+            .paragraphStyle: paragraph, .editorLeadingBar: true
+        ])
+        #if os(macOS)
+        let storage = try XCTUnwrap(view.textStorage)
+        storage.setAttributedString(text)
+        #else
+        view.attributedText = text
+        let storage = view.textStorage
+        view.layoutIfNeeded()
+        #endif
+        let bars = view.leadingBarRects()
+        XCTAssertEqual(bars.count, 1)
+        XCTAssertGreaterThan(try XCTUnwrap(bars.first).height, 32)
+        XCTAssertEqual(storage.string, source)
+        storage.removeAttribute(.editorLeadingBar, range: NSRange(location: 0, length: storage.length))
+        XCTAssertTrue(view.leadingBarRects().isEmpty)
+    }
+
+
     private struct Renderer: HighlightingTextEditor {
         var text: String
         let highlightRules: [HighlightRule]

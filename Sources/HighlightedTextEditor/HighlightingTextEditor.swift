@@ -217,3 +217,80 @@ struct HighlightingRenderSnapshot: Equatable {
         revision != nil && previous == self && text.utf16.elementsEqual(nativeText.utf16)
     }
 }
+
+import Foundation
+
+public extension NSAttributedString.Key {
+    /// Draws a decoration in the paragraph's leading gutter without adding text.
+    static let editorLeadingBar = Self("HighlightedTextEditor.leadingBar")
+}
+
+#if os(iOS)
+import UIKit
+
+open class LeadingBarTextView: UITextView {
+    open override func layoutSubviews() {
+        super.layoutSubviews()
+        setNeedsDisplay()
+    }
+
+    /// Text-input geometry keeps this compatible with both TextKit versions.
+    public func leadingBarRects() -> [CGRect] {
+        var bars: [CGRect] = []
+        textStorage.enumerateAttribute(.editorLeadingBar, in: NSRange(location: 0, length: textStorage.length)) { value, range, _ in
+            guard value as? Bool == true,
+                  let start = position(from: beginningOfDocument, offset: range.location),
+                  let end = position(from: start, offset: range.length),
+                  let textRange = textRange(from: start, to: end) else { return }
+            let lines = selectionRects(for: textRange).map(\.rect).filter { $0.height > 0 && !$0.isInfinite && !$0.isNull }
+            guard let top = lines.map(\.minY).min(), let bottom = lines.map(\.maxY).max() else { return }
+            bars.append(CGRect(x: textContainerInset.left + textContainer.lineFragmentPadding + 2,
+                               y: top, width: 3, height: bottom - top))
+        }
+        return bars
+    }
+
+    open override func draw(_ rect: CGRect) {
+        super.draw(rect)
+        UIColor.separator.setFill()
+        for bar in leadingBarRects() where bar.intersects(rect) {
+            UIBezierPath(roundedRect: bar, cornerRadius: 1.5).fill()
+        }
+    }
+}
+#elseif os(macOS)
+import AppKit
+
+open class LeadingBarTextView: NSTextView {
+    open override func layout() {
+        super.layout()
+        needsDisplay = true
+    }
+
+    public func leadingBarRects() -> [CGRect] {
+        guard let textStorage, let layoutManager, let textContainer else { return [] }
+        layoutManager.ensureLayout(for: textContainer)
+        var bars: [CGRect] = []
+        textStorage.enumerateAttribute(.editorLeadingBar, in: NSRange(location: 0, length: textStorage.length)) { value, range, _ in
+            guard value as? Bool == true else { return }
+            let glyphs = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            var extent = CGRect.null
+            layoutManager.enumerateLineFragments(forGlyphRange: glyphs) { line, _, _, _, _ in
+                extent = extent.union(line)
+            }
+            guard !extent.isNull else { return }
+            bars.append(CGRect(x: textContainerOrigin.x + textContainer.lineFragmentPadding + 2,
+                               y: textContainerOrigin.y + extent.minY, width: 3, height: extent.height))
+        }
+        return bars
+    }
+
+    open override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        NSColor.separatorColor.setFill()
+        for bar in leadingBarRects() where bar.intersects(dirtyRect) {
+            NSBezierPath(roundedRect: bar, xRadius: 1.5, yRadius: 1.5).fill()
+        }
+    }
+}
+#endif

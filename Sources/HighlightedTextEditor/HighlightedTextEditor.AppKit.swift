@@ -203,7 +203,7 @@ public extension HighlightedTextEditor {
 
             layoutManager.addTextContainer(textContainer)
 
-            let textView = NSTextView(frame: .zero, textContainer: textContainer)
+            let textView = LeadingBarTextView(frame: .zero, textContainer: textContainer)
             textView.autoresizingMask = .width
             textView.backgroundColor = NSColor.textBackgroundColor
             textView.delegate = self.delegate

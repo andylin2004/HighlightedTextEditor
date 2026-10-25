@@ -195,3 +195,9 @@ selection. Without a revision, every update renders as before.
 
 See [FORK.md](FORK.md) for the rendering and input-composition fixes retained by
 this fork.
+
+`NSAttributedString.Key.editorLeadingBar` marks ranges for a rounded, adaptive
+vertical bar in the leading gutter. Set it to `true` alongside a paragraph
+indent that leaves room for the bar. `LeadingBarTextView` renders this decoration
+in native UIKit and AppKit editors; it adds no characters to the document.
+The built-in highlighted editors use this view automatically.

@@ -45,7 +45,7 @@ public struct HighlightedTextEditor: UIViewRepresentable, HighlightingTextEditor
     }
 
     public func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = LeadingBarTextView()
         textView.delegate = context.coordinator
         updateTextViewModifiers(textView)
         runIntrospect(textView)

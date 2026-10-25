@@ -48,3 +48,9 @@ composition, selection restoration, and binding refreshes in a hosted editor.
 
 When updating from upstream, retain these behaviors and run the package tests
 and the consuming application's integration suite.
+
+`NSAttributedString.Key.editorLeadingBar` marks ranges for a rounded, adaptive
+vertical bar in the leading gutter. Set it to `true` alongside a paragraph
+indent that leaves room for the bar. `LeadingBarTextView` renders this decoration
+in native UIKit and AppKit editors; it adds no characters to the document.
+The built-in highlighted editors use this view automatically.
